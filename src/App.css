@@ -1,0 +1,47 @@
+html {
+  background: url("http://gerbus.ca/sites/laststand/img/last_stand_2015_july_selgauss_centered.jpg") no-repeat center top fixed;
+  background-position-y: -600px;
+}
+@media (min-width:961px) { 
+  html {
+    background-size: 200%; 
+    background-position-y: -1200px;
+  }
+}
+body {
+  background-color: transparent;
+}
+.container {
+  padding-top: 1em;
+}
+.text-back {
+  background-color: rgba(255,255,255,0.5);
+}
+.intro {
+  padding: 1.0em;
+  margin-top: 20px;
+}
+table.headroom {
+  margin-top: 20px;
+}
+table th {
+  border: none;
+}
+.weekend tr, .weekend td {
+  background-color: rgba(128,255,128,0.5);
+}
+.longweekend tr, .longweekend td {
+  background-color: rgba(220,255,220,0.5);
+}
+.info {
+  font-size: 11px;
+}
+.info i {
+  font-family: monospace;
+}
+table.minimal {
+  margin: 5px 0;
+}
+table.minimal td {
+  padding: 0 5px;
+}
