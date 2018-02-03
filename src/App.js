@@ -58,7 +58,7 @@ class App extends Component {
            
           data.push({
             className: itemClassName,
-            dateTime: itemDateTime.format("dddd, MMMM Do, YYYY @ h:mma"),
+            dateTime: itemDateTime.format("ddd, MMM D, YYYY @ h:mma"),
             tideLevel: itemTideLevel
           });
         }
