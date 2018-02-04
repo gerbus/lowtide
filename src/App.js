@@ -15,6 +15,8 @@ class App extends Component {
       data: [],
       dataFetched: false
     }
+    this.handleSubmit = this.handleSubmit.bind(this);
+    this.handleChange = this.handleChange.bind(this);
   }
   componentDidMount() {
     // Check querystring for params, apply to state
@@ -32,12 +34,12 @@ class App extends Component {
   getTideData() {
     const startDate = moment();
     const endDate = moment().add(this.state.days,"days");
-    const endpoint = "http://gerbus.ca:3012/chs/" + startDate.valueOf() + "-" + endDate.valueOf();
+    const endpoint = "http://api.gerbus.ca/chs/" + startDate.valueOf() + "-" + endDate.valueOf();
     
     fetch(endpoint)
     .then(resp => resp.json())
     .then(rawData => {
-      let data = this.state.data;
+      let data = [];
       rawData.searchReturn.data.data.map(item => {
         let itemDateTime = moment.utc(item.boundaryDate.max.$value,"YYYY-MM-DD HH:mm:ss");
         itemDateTime.local(); // convert to local timezone
@@ -63,6 +65,7 @@ class App extends Component {
           });
         }
       });
+      console.log(data);
       this.setState({data: data, dataFetched: true});
     })
     .catch(err => console.log("Fetch error: " + err))
@@ -76,16 +79,22 @@ class App extends Component {
           <div className="row">
             <div className="col-sm-10 col-md-8">
               
+              
               <div className="text-back intro">
                 <h1>Low Tide Finder (Vancouver)</h1>
-                <p>Listed are dates within <b>{this.state.days} days</b> (today to {endDate.format("MMM Do")}) on which low tides of less than <b>{this.state.depth}m</b> occur between the hours of <b>{this.state.startHour}:00 and {this.state.endHour}:00</b> on Vancouver shores. To change search parameters, see <a href="#params">bottom of page</a>.</p>
+                <p>Listed are dates within <b>{this.state.days} days</b> (today to {endDate.format("MMM Do")}) on which low tides of less than <b>{this.state.depth}m</b> occur between the hours of <b>{this.state.startHour}:00</b> and <b>{this.state.endHour}:00</b> on Vancouver shores. To try different search parameters, check the <a href="#params">bottom of this page</a>.</p>
               </div>				
 
       
-              <table className="table headroom"><thead>
-                <tr className="text-back"><th>When</th><th>Low Tide Level</th></tr>
-                </thead><tbody>
+              <table className="table headroom">
                 
+                {(this.state.dataFetched && this.state.data.length > 0) ? (
+                  <thead>
+                    <tr className="text-back"><th>When</th><th>Low Tide Level</th></tr>
+                  </thead>
+                ) : null}
+                
+                <tbody>
                 {
                   (this.state.dataFetched) ? (
                     (this.state.data.length > 0) ? (
@@ -96,29 +105,40 @@ class App extends Component {
                         </tr>
                       )) 
                     ) : (
-                      <tr className="text-back"><td colSpan="2">No data</td></tr>
+                      <tr className="text-back"><td colSpan="2"><center>No results. To try different search parameters, see the <a href="#params">bottom of this page</a>.</center></td></tr>
                     )
                   ) : (
-                    <tr className="text-back"><td colSpan="2"><center><img src={waiting} /></center></td></tr>
+                    <tr className="text-back"><td colSpan="2"><center><img src={waiting} alt="Loading data..."/></center></td></tr>
                   )
                 }
-                  
                 </tbody>
+
               </table>
               
 
-              <div id="params" className="alert alert-info info"><b>To alter the parameters of the results</b>, use the link below and modify these querystring parameters as needed:
-                <table className="minimal">
-                  <tbody>
-                    <tr><td><i>days</i></td><td>only show results before today + <i>days</i>; integer</td></tr>
-                    <tr><td><i>depth</i></td><td>only show results where low-tide is less than <i>depth</i>; decimal / meters</td></tr>
-                    <tr><td><i>startHour</i>, <i>endHour</i>&nbsp;&nbsp;</td><td>only show results between the hours of <i>startHour</i> and <i>endHour</i>; integer / hour on 24-hour clock</td></tr>
-
-                  </tbody>
-                </table>
-                i.e. <a href={window.location.origin + window.location.pathname + "?days=" + this.state.days + "&depth=" + this.state.depth + "&startHour=" + this.state.startHour + "&endHour=" + this.state.endHour}>{window.location.origin + window.location.pathname}?days={this.state.days}&depth={this.state.depth}&startHour={this.state.startHour}&endHour={this.state.endHour}</a>
+              <div id="params" className="alert alert-info info">
+                <form className="form" onSubmit={this.handleSubmit}>
+                  <div className="form-group">
+                    <label for="days">Number of days (from today)</label>
+                    <input className="form-control" id="days" value={this.state.days} onChange={this.handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label for="depth">Maximum depth of low tide (meters)</label>
+                    <input className="form-control" id="depth" value={this.state.depth} onChange={this.handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label for="startHour">Minimum hour of day</label>
+                    <input className="form-control" id="startHour" value={this.state.startHour} onChange={this.handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label for="endHour">Maximum hour of day</label>
+                    <input className="form-control" id="endHour" value={this.state.endHour} onChange={this.handleChange} />
+                  </div>
+                  <button className="btn btn-primary" type="submit">Find Tides</button>
+                </form>
               </div>
-
+              
+              
             </div>
           </div>
           <p className="info">
@@ -126,6 +146,14 @@ class App extends Component {
         </div>
       </div>
     );
+  }
+  handleChange(e) {
+    this.setState({[e.target.id]: e.target.value});
+  }
+  handleSubmit(e) {
+    e.preventDefault();
+    this.setState({dataFetched: false});
+    this.getTideData();
   }
 }
 
