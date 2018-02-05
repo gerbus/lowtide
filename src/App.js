@@ -8,15 +8,17 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      days: 90,
-      depth: 1.2,
-      startHour: 11,
-      endHour: 18,
+      days: 60,
+      depth: 1.5,
+      startHour: 9,
+      endHour: 16,
       data: [],
+      inputsChanged: false,
       dataFetched: false
     }
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleChange = this.handleChange.bind(this);
+    this.handleFocus = this.handleFocus.bind(this);
   }
   componentDidMount() {
     // Check querystring for params, apply to state
@@ -65,7 +67,7 @@ class App extends Component {
           });
         }
       });
-      console.log(data);
+      //console.log(data);
       this.setState({data: data, dataFetched: true});
     })
     .catch(err => console.log("Fetch error: " + err))
@@ -82,7 +84,57 @@ class App extends Component {
               
               <div className="text-back intro">
                 <h1>Low Tide Finder (Vancouver)</h1>
-                <p>Listed are dates within <b>{this.state.days} days</b> (today to {endDate.format("MMM Do")}) on which low tides of less than <b>{this.state.depth}m</b> occur between the hours of <b>{this.state.startHour}:00</b> and <b>{this.state.endHour}:00</b> on Vancouver shores. To try different search parameters, check the <a href="#params">bottom of this page</a>.</p>
+                <form className="form-inline" onSubmit={this.handleSubmit}>
+                  <p>Listed below are dates within <b>
+                    <input 
+                      className="form-control form-control-sm" 
+                      type="number" 
+                      max="365"
+                      id="days" 
+                      value={this.state.days} 
+                      onChange={this.handleChange} 
+                      onFocus={this.handleFocus}
+                      /> 
+                    days</b> (today to {endDate.format("MMM Do")}) on which low tide levels of less than <b>
+                    <input 
+                      className="form-control form-control-sm" 
+                      type="number"
+                      step="any"
+                      id="depth" 
+                      value={this.state.depth} 
+                      onChange={this.handleChange}  
+                      onFocus={this.handleFocus}
+                      />
+                    m</b> occur between the hours of <b>
+                    <input 
+                      className="form-control form-control-sm" 
+                      type="number" 
+                      max="24" 
+                      id="startHour" 
+                      value={this.state.startHour} 
+                      onChange={this.handleChange}  
+                      onFocus={this.handleFocus}
+                      />
+                    :00</b> and <b>
+                    <input 
+                      className="form-control form-control-sm" 
+                      type="number" 
+                      max="24" 
+                      id="endHour" 
+                      value={this.state.endHour} 
+                      onChange={this.handleChange}  
+                      onFocus={this.handleFocus}
+                      />
+                    :00</b> on Vancouver shores.</p>
+                  { (this.state.inputsChanged) ? (
+                  <button 
+                    className="btn btn-primary btn-sm" 
+                    type="submit"
+                    >
+                  Find Tides</button>
+                    ) : null
+                   }
+                </form>
               </div>				
 
       
@@ -90,7 +142,10 @@ class App extends Component {
                 
                 {(this.state.dataFetched && this.state.data.length > 0) ? (
                   <thead>
-                    <tr className="text-back"><th>When</th><th>Low Tide Level</th></tr>
+                    <tr className="text-back">
+                      <th className="colLeft">When</th>
+                      <th className="colRight">Low Tide Level</th>
+                    </tr>
                   </thead>
                 ) : null}
                 
@@ -115,29 +170,6 @@ class App extends Component {
 
               </table>
               
-
-              <div id="params" className="alert alert-info info">
-                <form className="form" onSubmit={this.handleSubmit}>
-                  <div className="form-group">
-                    <label for="days">Number of days (from today)</label>
-                    <input className="form-control" id="days" value={this.state.days} onChange={this.handleChange} />
-                  </div>
-                  <div className="form-group">
-                    <label for="depth">Maximum depth of low tide (meters)</label>
-                    <input className="form-control" id="depth" value={this.state.depth} onChange={this.handleChange} />
-                  </div>
-                  <div className="form-group">
-                    <label for="startHour">Minimum hour of day</label>
-                    <input className="form-control" id="startHour" value={this.state.startHour} onChange={this.handleChange} />
-                  </div>
-                  <div className="form-group">
-                    <label for="endHour">Maximum hour of day</label>
-                    <input className="form-control" id="endHour" value={this.state.endHour} onChange={this.handleChange} />
-                  </div>
-                  <button className="btn btn-primary" type="submit">Find Tides</button>
-                </form>
-              </div>
-              
               
             </div>
           </div>
@@ -147,12 +179,21 @@ class App extends Component {
       </div>
     );
   }
+  handleFocus(e) {
+    e.target.select();
+  }
   handleChange(e) {
-    this.setState({[e.target.id]: e.target.value});
+    if (e.target.type === "number" && e.target.max) {
+      if (parseFloat(e.target.value) > parseFloat(e.target.max)) {
+        return;
+      } 
+    }
+    this.setState({[e.target.id]: e.target.value, inputsChanged: true});
   }
   handleSubmit(e) {
     e.preventDefault();
-    this.setState({dataFetched: false});
+    this.setState({dataFetched: false, inputsChanged: false});
+    window.history.pushState(this.state,"Low Tide Finder | Vancouver (" + this.state.days + "d/" + this.state.depth + "m/" + this.state.startHour + ":00/" + this.state.endHour + ":00)","/?days=" + this.state.days + "&depth=" + this.state.depth + "&startHour=" + this.state.startHour + "&endHour=" + this.state.endHour);
     this.getTideData();
   }
 }

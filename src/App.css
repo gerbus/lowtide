@@ -24,24 +24,18 @@ body {
 h1 { font-size: 24px; }
 
 
-/* Utilities */
-.text-back {
-  background-color: rgba(255,255,255,0.5);
-}
-.info {
-  font-size: 11px;
-}
-.info i {
-  font-family: monospace;
-}
-
-
 /* Tables */
 table.headroom {
   margin-top: 20px;
 }
-table th {
-  border: none;
+.table thead th {
+  border-bottom: 2px solid black;
+}
+.table td + td {
+  width: 25%
+}
+.table td {
+  /*padding: 0.25rem;*/
 }
 .weekend tr, .weekend td {
   background-color: rgba(128,255,128,0.5);
@@ -54,6 +48,38 @@ table.minimal {
 }
 table.minimal td {
   padding: 0 5px;
+}
+
+
+/* Form */
+input.form-control-sm {
+  display: inline-block;
+  padding: 0 0.25rem;
+}
+input#days, input#depth { width: 35px; }
+input#startHour, input#endHour { width: 27px; }
+@media (min-width: 576px) {
+  input#days, input#depth { width: 55px; }
+  input#startHour, input#endHour { width: 47px; }
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Utilities */
+.text-back {
+  background-color: rgba(255,255,255,0.5);
+}
+.info {
+  font-size: 11px;
+}
+.info i {
+  font-family: monospace;
 }
 
 
