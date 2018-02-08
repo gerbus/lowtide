@@ -1,12 +1,12 @@
 /* General */
 html {
-  background: url("http://gerbus.ca/sites/laststand/img/last_stand_2015_july_selgauss_centered.jpg") no-repeat center top fixed;
-  background-position-y: -600px;
+  background: url("http://gerbus.ca/sites/laststand/img/last_stand_2015_july_selgauss_centered.jpg") no-repeat -60px bottom fixed;
+  background-position-y: -500px;
 }
-@media (min-width:961px) { 
+@media (min-width:576px) { 
   html {
     background-size: 200%; 
-    background-position-y: -1200px;
+    background-position-y: -80vw;
   }
 }
 body {

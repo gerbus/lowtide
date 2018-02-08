@@ -79,7 +79,7 @@ class App extends Component {
       <div className="App">
         <div className="container">
           <div className="row">
-            <div className="col-sm-10 col-md-8">
+            <div className="col-sm-10 col-md-9">
               
               
               <div className="text-back intro">
