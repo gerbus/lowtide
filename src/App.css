@@ -56,7 +56,7 @@ input.form-control-sm {
   display: inline-block;
   padding: 0 0.25rem;
 }
-input#days, input#depth { width: 35px; }
+input#days, input#depth { width: 40px; }
 input#startHour, input#endHour { width: 27px; }
 @media (min-width: 576px) {
   input#days, input#depth { width: 55px; }
@@ -70,6 +70,27 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
     -moz-appearance: textfield;
 }
+.btn-primary {
+  color: #333;
+  background-color: #80f080;
+  border-color: #808080;
+}
+.btn-primary:hover {
+  color: #000;
+  background-color: #80ff80;
+  border-color: #000;
+}
+.btn-default {
+  color: #333;
+  background-color: #e0e0e0;
+  border-color: #808080;
+}
+.btn-default:hover {
+  color: #000;
+  background-color: #efefef;
+  border-color: #000;
+}
+
 
 /* Utilities */
 .text-back {
@@ -87,4 +108,7 @@ input[type="number"] {
 .intro {
   padding: 1.0em;
   margin-top: 20px;
+}
+.btn-default {
+  float: right;
 }

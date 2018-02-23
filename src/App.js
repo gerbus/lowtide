@@ -4,6 +4,8 @@ import moment from 'moment';
 import queryString from 'query-string';
 import waiting from './spiffygif_40x40.gif';
 
+const feetPerMeter = 3.28084;
+
 class App extends Component {
   constructor(props) {
     super(props);
@@ -13,12 +15,14 @@ class App extends Component {
       startHour: 9,
       endHour: 16,
       data: [],
-      inputsChanged: false,
-      dataFetched: false
+      showSubmit: false,
+      dataFetched: false,
+      unitsInFeet: false
     }
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleChange = this.handleChange.bind(this);
     this.handleFocus = this.handleFocus.bind(this);
+    this.handleChangeUnits = this.handleChangeUnits.bind(this);
   }
   componentDidMount() {
     // Check querystring for params, apply to state
@@ -42,12 +46,18 @@ class App extends Component {
     .then(resp => resp.json())
     .then(rawData => {
       let data = [];
+      let depthInMeters = this.getInMeters(this.state.depth);
       rawData.searchReturn.data.data.map(item => {
         let itemDateTime = moment.utc(item.boundaryDate.max.$value,"YYYY-MM-DD HH:mm:ss");
         itemDateTime.local(); // convert to local timezone
-        const itemTideLevel = item.value.$value;
+        const itemTideLevel = item.value.$value;  // Always in meters
         
-        if (itemTideLevel <= this.state.depth && this.state.startHour <= itemDateTime.hour() && itemDateTime.hour() < this.state.endHour) {
+        // Filter results
+        if (itemTideLevel <= depthInMeters && 
+            this.state.startHour <= itemDateTime.hour() && 
+            itemDateTime.hour() < this.state.endHour) {
+          
+          // Highlight weekends and long weekends
           let itemClassName = "";
           switch (itemDateTime.day()) {
             case 0:
@@ -59,15 +69,23 @@ class App extends Component {
               itemClassName = "longweekend";
               break;
           }
-           
+          
+          // Convert depths to feet if necessary
+          let tideLevelInCurrentUnits = itemTideLevel;
+          if (this.state.unitsInFeet) {
+            tideLevelInCurrentUnits = this.convertMetersToFeet(itemTideLevel).toFixed(2);
+          }
+          
+          // Build data
           data.push({
             className: itemClassName,
             dateTime: itemDateTime.format("ddd, MMM D, YYYY @ h:mma"),
-            tideLevel: itemTideLevel
+            tideLevel: tideLevelInCurrentUnits
           });
         }
       });
-      //console.log(data);
+      
+      // Push to state (render)
       this.setState({data: data, dataFetched: true});
     })
     .catch(err => console.log("Fetch error: " + err))
@@ -105,7 +123,7 @@ class App extends Component {
                       onChange={this.handleChange}  
                       onFocus={this.handleFocus}
                       />
-                    m</b> occur between the hours of <b>
+                    {this.state.unitsInFeet ? "ft" : "m"}</b> occur between the hours of <b>
                     <input 
                       className="form-control form-control-sm" 
                       type="number" 
@@ -125,15 +143,25 @@ class App extends Component {
                       onChange={this.handleChange}  
                       onFocus={this.handleFocus}
                       />
-                    :00</b> on Vancouver shores.</p>
-                  { (this.state.inputsChanged) ? (
-                  <button 
-                    className="btn btn-primary btn-sm" 
-                    type="submit"
+                    :00</b> on Vancouver shores.
+                  </p>
+                  <div style={{"width":"100%"}}>
+                    { (this.state.showSubmit) ? (
+                    <button 
+                      className="btn btn-primary btn-sm" 
+                      type="submit"
+                      >
+                    Find Tides</button>
+                      ) : null
+                     }
+                    <button 
+                      className="btn btn-default btn-sm"
+                      type="button"
+                      onClick={this.handleChangeUnits}
                     >
-                  Find Tides</button>
-                    ) : null
-                   }
+                    Switch to {this.state.unitsInFeet ? "meters" : "feet"}
+                    </button>
+                  </div>
                 </form>
               </div>				
 
@@ -156,7 +184,7 @@ class App extends Component {
                       this.state.data.map((item, index) => (
                         <tr key={index} className={'text-back ' + item.className}>
                           <td>{item.dateTime}</td>
-                          <td>{item.tideLevel} m</td>
+                          <td>{item.tideLevel} {this.state.unitsInFeet ? "ft" : "m"}</td>
                         </tr>
                       )) 
                     ) : (
@@ -188,13 +216,61 @@ class App extends Component {
         return;
       } 
     }
-    this.setState({[e.target.id]: e.target.value, inputsChanged: true});
+    this.setState({[e.target.id]: e.target.value, showSubmit: true});
   }
   handleSubmit(e) {
     e.preventDefault();
-    this.setState({dataFetched: false, inputsChanged: false});
-    window.history.pushState(this.state,"Low Tide Finder | Vancouver (" + this.state.days + "d/" + this.state.depth + "m/" + this.state.startHour + ":00/" + this.state.endHour + ":00)","/?days=" + this.state.days + "&depth=" + this.state.depth + "&startHour=" + this.state.startHour + "&endHour=" + this.state.endHour);
+    this.setState({dataFetched: false, showSubmit: false});
+
+    // Push to browser history
+    let depthInMeters = this.getInMeters(this.state.depth); // Convert to Meters if necessary
+    window.history.pushState(this.state,"Low Tide Finder | Vancouver (" + this.state.days + "d/" + depthInMeters + "m/" + this.state.startHour + ":00/" + this.state.endHour + ":00)","/?days=" + this.state.days + "&depth=" + depthInMeters + "&startHour=" + this.state.startHour + "&endHour=" + this.state.endHour);
+    
+    // Fetch new data
     this.getTideData();
+  }
+  handleChangeUnits(e) {
+    // Scale factor
+    let s = 1;
+    if (this.state.unitsInFeet) {
+      // Feet to Meters
+      s = 1 / 3.28084;
+    } else {
+      // Meters to Feet
+      s = 3.28084;
+    }
+    
+    // Mutate input
+    let depth = this.state.depth;
+    let convertedDepth = depth * s;
+    convertedDepth = convertedDepth.toFixed(2);
+    
+    // Mutate data
+    let data = this.state.data;
+    let convertedData = [];
+    convertedData = data.map(item => {
+      item.tideLevel = item.tideLevel * s;
+      item.tideLevel = item.tideLevel.toFixed(2);
+      return item;
+    });
+
+    // Update state
+    this.setState({
+      unitsInFeet: !this.state.unitsInFeet,
+      depth: convertedDepth,
+      data: convertedData
+    });
+  }
+  getInMeters(measure) {
+    let s = 1;  // assume measure already in meters
+    if (this.state.unitsInFeet) s = 1 / 3.28084;
+    let measureInMeters = s * measure;    
+    return measureInMeters;
+  }
+  convertMetersToFeet(measureInMeters) {
+    let s = 3.28084;
+    let measureInFeet = s * measureInMeters;    
+    return measureInFeet;
   }
 }
 
