@@ -151,7 +151,7 @@ class App extends Component {
                       className="btn btn-primary btn-sm" 
                       type="submit"
                       >
-                    Find Tides</button>
+                    Find Low Tides</button>
                       ) : null
                      }
                     <button 
@@ -184,7 +184,7 @@ class App extends Component {
                       this.state.data.map((item, index) => (
                         <tr key={index} className={'text-back ' + item.className}>
                           <td>{item.dateTime}</td>
-                          <td>{item.tideLevel} {this.state.unitsInFeet ? "ft" : "m"}</td>
+                          <td>{parseFloat(item.tideLevel).toFixed(1)} {this.state.unitsInFeet ? "ft" : "m"}</td>
                         </tr>
                       )) 
                     ) : (
