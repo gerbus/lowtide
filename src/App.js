@@ -53,7 +53,7 @@ class App extends Component {
     fetch(endpoint)
     .then(resp => resp.json())
     .then(rawData => {
-      console.log(rawData.searchReturn.data);
+      //console.log(rawData.searchReturn.data);
       let data = [];
       let depthInMeters = this.getInMeters(this.state.depth);
       rawData.searchReturn.data.data.map(item => {
@@ -131,7 +131,7 @@ class App extends Component {
       // Direction
       const direction = (dL < 0) ? "going out" : "coming in";
       
-      this.setState({currentDepth: l, currentDirection: direction, currentTime: t.format("ddd, MMM D, YYYY @ h:mma")});
+      this.setState({currentDepth: waterLevelInCurrentUnits, currentDirection: direction, currentTime: t.format("ddd, MMM D, YYYY @ h:mma")});
       //console.log(t1,t2,l1,l2,intervalT,intervalL,dT,dL,l1+dL);
     })
     .catch(err => console.log("Fetch error: " + err))
@@ -212,7 +212,7 @@ class App extends Component {
               </div>				
 
               <div className="current">
-                <p>Current depth is <strong>{parseFloat(this.state.currentDepth).toFixed(1)} {this.state.unitsInFeet ? "ft" : "m"}</strong> <span className={this.state.currentDirection}>({this.state.currentDirection})</span></p>
+                <p>Current depth is <strong>{parseFloat(this.state.currentDepth).toFixed(2)} {this.state.unitsInFeet ? "ft" : "m"}</strong> <span className={this.state.currentDirection}>({this.state.currentDirection})</span></p>
               </div>
               
               <table className="table">
