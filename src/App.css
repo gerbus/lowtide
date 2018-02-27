@@ -105,9 +105,16 @@ input[type="number"] {
 
 
 /* Specific */
-.intro {
+.intro{
   padding: 1.0em;
   margin-top: 20px;
+}
+.current {
+  text-align: right;
+}
+.current p {
+  margin-top: 1rem;
+  margin-bottom: 0;
 }
 .btn-default {
   float: right;

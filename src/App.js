@@ -15,6 +15,9 @@ class App extends Component {
       startHour: 9,
       endHour: 16,
       data: [],
+      currentDepth: null,
+      currentDirection: "", // coming "in" or going "out"
+      currentTime: null,
       showSubmit: false,
       dataFetched: false,
       unitsInFeet: false
@@ -35,16 +38,22 @@ class App extends Component {
     this.setState(state);
     
     // Fetch data from Canadian Hydrographic Service
-    this.getTideData();
+    this.getData();
   }
-  getTideData() {
+  getData() {
+    this.getLowTideData();
+    this.getCurrentConditionsData();
+  }
+  getLowTideData() {
+    // Get Low Tide Prediction Data
     const startDate = moment();
     const endDate = moment().add(this.state.days,"days");
-    const endpoint = "http://api.gerbus.ca/chs/" + startDate.valueOf() + "-" + endDate.valueOf();
+    const endpoint = "http://api.gerbus.ca/chs/hilo/" + startDate.valueOf() + "-" + endDate.valueOf();
     
     fetch(endpoint)
     .then(resp => resp.json())
     .then(rawData => {
+      console.log(rawData.searchReturn.data);
       let data = [];
       let depthInMeters = this.getInMeters(this.state.depth);
       rawData.searchReturn.data.data.map(item => {
@@ -71,7 +80,7 @@ class App extends Component {
           }
           
           // Convert depths to feet if necessary
-          let tideLevelInCurrentUnits = itemTideLevel;
+          let tideLevelInCurrentUnits = itemTideLevel;  // always in meters
           if (this.state.unitsInFeet) {
             tideLevelInCurrentUnits = this.convertMetersToFeet(itemTideLevel).toFixed(2);
           }
@@ -87,6 +96,43 @@ class App extends Component {
       
       // Push to state (render)
       this.setState({data: data, dataFetched: true});
+    })
+    .catch(err => console.log("Fetch error: " + err))
+  }
+  getCurrentConditionsData() {
+    // Get Current Water Level Prediction Data
+    const startDate = moment().subtract(16,"m");
+    const endDate = moment().add(14,"m");
+    const endpoint = "http://api.gerbus.ca/chs/wl15/" + startDate.valueOf() + "-" + endDate.valueOf();
+    
+    fetch(endpoint)
+    .then(resp => resp.json())
+    .then(rawData => {
+      //console.log(rawData.searchReturn.data);
+      const t1 = moment(rawData.searchReturn.data.data[0].boundaryDate.max.$value).valueOf();
+      const t2 = moment(rawData.searchReturn.data.data[1].boundaryDate.max.$value).valueOf();
+      const l1 = parseFloat(rawData.searchReturn.data.data[0].value.$value);
+      const l2 = parseFloat(rawData.searchReturn.data.data[1].value.$value);
+      
+      // Linear interpolation
+      const intervalT = t2 - t1;
+      const intervalL = l2 - l1;
+      const t = moment();
+      const dT = t.valueOf() - t1;
+      const dL = intervalL * dT / intervalT;
+      const l = l1 + dL;
+      
+      // Convert depths to feet if necessary
+      let waterLevelInCurrentUnits = l;   // always in meters
+      if (this.state.unitsInFeet) {
+        waterLevelInCurrentUnits = this.convertMetersToFeet(l).toFixed(2);
+      }
+      
+      // Direction
+      const direction = (dL < 0) ? "going out" : "coming in";
+      
+      this.setState({currentDepth: l, currentDirection: direction, currentTime: t.format("ddd, MMM D, YYYY @ h:mma")});
+      //console.log(t1,t2,l1,l2,intervalT,intervalL,dT,dL,l1+dL);
     })
     .catch(err => console.log("Fetch error: " + err))
   }
@@ -165,8 +211,11 @@ class App extends Component {
                 </form>
               </div>				
 
-      
-              <table className="table headroom">
+              <div className="current">
+                <p>Current depth is <strong>{parseFloat(this.state.currentDepth).toFixed(1)} {this.state.unitsInFeet ? "ft" : "m"}</strong> <span className={this.state.currentDirection}>({this.state.currentDirection})</span></p>
+              </div>
+              
+              <table className="table">
                 
                 {(this.state.dataFetched && this.state.data.length > 0) ? (
                   <thead>
@@ -227,7 +276,7 @@ class App extends Component {
     window.history.pushState(this.state,"Low Tide Finder | Vancouver (" + this.state.days + "d/" + depthInMeters + "m/" + this.state.startHour + ":00/" + this.state.endHour + ":00)","/?days=" + this.state.days + "&depth=" + depthInMeters + "&startHour=" + this.state.startHour + "&endHour=" + this.state.endHour);
     
     // Fetch new data
-    this.getTideData();
+    this.getData();
   }
   handleChangeUnits(e) {
     // Scale factor
@@ -243,29 +292,30 @@ class App extends Component {
     // Mutate input
     let depth = this.state.depth;
     let convertedDepth = depth * s;
-    convertedDepth = convertedDepth.toFixed(2);
+    convertedDepth = convertedDepth.toFixed(1);
     
     // Mutate data
     let data = this.state.data;
     let convertedData = [];
     convertedData = data.map(item => {
       item.tideLevel = item.tideLevel * s;
-      item.tideLevel = item.tideLevel.toFixed(2);
       return item;
     });
+    let convertedCurrentDepth = this.state.currentDepth * s;
 
     // Update state
     this.setState({
       unitsInFeet: !this.state.unitsInFeet,
       depth: convertedDepth,
-      data: convertedData
+      data: convertedData,
+      currentDepth: convertedCurrentDepth
     });
   }
   getInMeters(measure) {
     let s = 1;  // assume measure already in meters
     if (this.state.unitsInFeet) s = 1 / 3.28084;
     let measureInMeters = s * measure;    
-    return measureInMeters;
+    return measureInMeters.toFixed(3);
   }
   convertMetersToFeet(measureInMeters) {
     let s = 3.28084;
