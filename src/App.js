@@ -48,7 +48,8 @@ class App extends Component {
     // Get Low Tide Prediction Data
     const startDate = moment();
     const endDate = moment().add(this.state.days,"days");
-    const endpoint = "http://api.gerbus.ca/chs/hilo/" + startDate.valueOf() + "-" + endDate.valueOf();
+    //console.log("lowTideData",startDate,endDate);
+    const endpoint = "http://api.gerbus.ca/chs/hilo/" + startDate.valueOf() + "-" + endDate.valueOf();  // .valueOf always gets UTC
     
     fetch(endpoint)
     .then(resp => resp.json())
@@ -101,16 +102,18 @@ class App extends Component {
   }
   getCurrentConditionsData() {
     // Get Current Water Level Prediction Data
-    const startDate = moment().subtract(16,"m");
-    const endDate = moment().add(14,"m");
-    const endpoint = "http://api.gerbus.ca/chs/wl15/" + startDate.valueOf() + "-" + endDate.valueOf();
+    const nowUtc = moment.utc().format("YYYY-MM-DD HH:mm:ss");
+    const startDate = moment(nowUtc).subtract(16,"m");
+    const endDate = moment(nowUtc).add(14,"m");
+    //console.log(startDate,endDate);
+    const endpoint = "http://api.gerbus.ca/chs/wl15/" + startDate.valueOf() + "-" + endDate.valueOf();  // .valueOf always gets UTC
     
     fetch(endpoint)
     .then(resp => resp.json())
     .then(rawData => {
-      //console.log(rawData.searchReturn.data);
-      const t1 = moment(rawData.searchReturn.data.data[0].boundaryDate.max.$value).valueOf();
-      const t2 = moment(rawData.searchReturn.data.data[1].boundaryDate.max.$value).valueOf();
+      console.log(rawData.searchReturn.data);
+      const t1 = moment.utc(rawData.searchReturn.data.data[0].boundaryDate.max.$value).valueOf();
+      const t2 = moment.utc(rawData.searchReturn.data.data[1].boundaryDate.max.$value).valueOf();
       const l1 = parseFloat(rawData.searchReturn.data.data[0].value.$value);
       const l2 = parseFloat(rawData.searchReturn.data.data[1].value.$value);
       
@@ -121,6 +124,7 @@ class App extends Component {
       const dT = t.valueOf() - t1;
       const dL = intervalL * dT / intervalT;
       const l = l1 + dL;
+      //console.log(intervalL,dT,intervalT,dL,l1);
       
       // Convert depths to feet if necessary
       let waterLevelInCurrentUnits = l;   // always in meters
@@ -129,7 +133,7 @@ class App extends Component {
       }
       
       // Direction
-      const direction = (dL < 0) ? "going out" : "coming in";
+      const direction = (dL < 0) ? "falling" : "rising";
       
       this.setState({currentDepth: waterLevelInCurrentUnits, currentDirection: direction, currentTime: t.format("ddd, MMM D, YYYY @ h:mma")});
       //console.log(t1,t2,l1,l2,intervalT,intervalL,dT,dL,l1+dL);
