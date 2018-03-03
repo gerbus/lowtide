@@ -16,7 +16,8 @@ class App extends Component {
       endHour: 16,
       data: [],
       currentDepth: null,
-      currentDirection: "", // coming "in" or going "out"
+      currentDirection: "", // "rising" or "falling"
+      currentRate: null,
       currentTime: null,
       showSubmit: false,
       dataFetched: false,
@@ -39,6 +40,9 @@ class App extends Component {
     
     // Fetch data from Canadian Hydrographic Service
     this.getData();
+    
+    // Refresh current conditions every 5s
+    setInterval(() => {this.getCurrentConditionsData();}, 5000);
   }
   getData() {
     this.getLowTideData();
@@ -112,30 +116,32 @@ class App extends Component {
     .then(resp => resp.json())
     .then(rawData => {
       console.log(rawData.searchReturn.data);
-      const t1 = moment.utc(rawData.searchReturn.data.data[0].boundaryDate.max.$value).valueOf();
-      const t2 = moment.utc(rawData.searchReturn.data.data[1].boundaryDate.max.$value).valueOf();
       const l1 = parseFloat(rawData.searchReturn.data.data[0].value.$value);
       const l2 = parseFloat(rawData.searchReturn.data.data[1].value.$value);
+      const t1 = moment.utc(rawData.searchReturn.data.data[0].boundaryDate.max.$value).valueOf();
+      const t2 = moment.utc(rawData.searchReturn.data.data[1].boundaryDate.max.$value).valueOf();
       
       // Linear interpolation
-      const intervalT = t2 - t1;
-      const intervalL = l2 - l1;
+      const intervalL = l2 - l1;  // meters
+      const intervalT = t2 - t1;  // milliseconds
       const t = moment();
-      const dT = t.valueOf() - t1;
-      const dL = intervalL * dT / intervalT;
+      const dT = t.valueOf() - t1;  // milliseconds
+      const dL = intervalL * dT / intervalT;  // interpolate; meters
       const l = l1 + dL;
       //console.log(intervalL,dT,intervalT,dL,l1);
       
       // Convert depths to feet if necessary
       let waterLevelInCurrentUnits = l;   // always in meters
+      let depthChangeRateInCurrentUnits = Math.abs(dL) * 60000 / dT;   // meters per minute
       if (this.state.unitsInFeet) {
-        waterLevelInCurrentUnits = this.convertMetersToFeet(l).toFixed(2);
+        waterLevelInCurrentUnits = this.convertMetersToFeet(waterLevelInCurrentUnits).toFixed(2);
+        depthChangeRateInCurrentUnits = this.convertMetersToFeet(depthChangeRateInCurrentUnits).toFixed(2);
       }
       
       // Direction
       const direction = (dL < 0) ? "falling" : "rising";
       
-      this.setState({currentDepth: waterLevelInCurrentUnits, currentDirection: direction, currentTime: t.format("ddd, MMM D, YYYY @ h:mma")});
+      this.setState({currentDepth: waterLevelInCurrentUnits, currentRate: depthChangeRateInCurrentUnits, currentDirection: direction, currentTime: t.format("ddd, MMM D, YYYY @ h:mma")});
       //console.log(t1,t2,l1,l2,intervalT,intervalL,dT,dL,l1+dL);
     })
     .catch(err => console.log("Fetch error: " + err))
@@ -216,7 +222,12 @@ class App extends Component {
               </div>				
 
               <div className="current">
-                <p>Current depth is <strong>{parseFloat(this.state.currentDepth).toFixed(2)} {this.state.unitsInFeet ? "ft" : "m"}</strong> <span className={this.state.currentDirection}>({this.state.currentDirection})</span></p>
+                <p>Current depth is <strong>{parseFloat(this.state.currentDepth).toFixed(2)} {this.state.unitsInFeet ? "ft" : "m"}</strong> <div className={this.state.currentDirection}>({this.state.currentDirection} at {
+                    this.state.unitsInFeet ? 
+                      parseFloat(this.state.currentRate * 12).toFixed(1) + " inches"
+                    :
+                      parseFloat(this.state.currentRate * 100).toFixed(1) + " cm"
+                  }/min)</div></p>
               </div>
               
               <table className="table">
@@ -305,14 +316,16 @@ class App extends Component {
       item.tideLevel = item.tideLevel * s;
       return item;
     });
-    let convertedCurrentDepth = this.state.currentDepth * s;
-
+    const convertedCurrentDepth = this.state.currentDepth * s;
+    const convertedCurrentRate = this.state.currentRate * s;
+    
     // Update state
     this.setState({
       unitsInFeet: !this.state.unitsInFeet,
       depth: convertedDepth,
       data: convertedData,
-      currentDepth: convertedCurrentDepth
+      currentDepth: convertedCurrentDepth,
+      currentRate: convertedCurrentRate
     });
   }
   getInMeters(measure) {
