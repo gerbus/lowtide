@@ -105,16 +105,26 @@ input[type="number"] {
 
 
 /* Specific */
-.intro{
+.intro {
   padding: 1.0em;
   margin-top: 20px;
 }
 .current {
-  text-align: right;
+  margin-top: 10px;
+  font-size: 12px;
+  display: table;
+  width: 100%;
 }
-.current p {
-  margin-top: 1rem;
-  margin-bottom: 0;
+.current > div {
+  display: table-row;  
+}
+.current .time,
+.current .conditions {
+  display: table-cell;
+  vertical-align: bottom;
+}
+.current .conditions {
+  text-align: right;
 }
 .btn-default {
   float: right;

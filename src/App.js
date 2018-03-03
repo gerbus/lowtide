@@ -18,6 +18,7 @@ class App extends Component {
       currentDepth: null,
       currentDirection: "", // "rising" or "falling"
       currentRate: null,
+      currentDate: null,
       currentTime: null,
       showSubmit: false,
       dataFetched: false,
@@ -41,8 +42,9 @@ class App extends Component {
     // Fetch data from Canadian Hydrographic Service
     this.getData();
     
-    // Refresh current conditions every 5s
+    // Refresh current conditions every 5s, time every 1s
     setInterval(() => {this.getCurrentConditionsData();}, 5000);
+    setInterval(() => {this.getCurrentTime();}, 1000);
   }
   getData() {
     this.getLowTideData();
@@ -141,10 +143,20 @@ class App extends Component {
       // Direction
       const direction = (dL < 0) ? "falling" : "rising";
       
-      this.setState({currentDepth: waterLevelInCurrentUnits, currentRate: depthChangeRateInCurrentUnits, currentDirection: direction, currentTime: t.format("ddd, MMM D, YYYY @ h:mma")});
+      this.setState({
+        currentDepth: waterLevelInCurrentUnits, 
+        currentRate: depthChangeRateInCurrentUnits, 
+        currentDirection: direction
+      });
       //console.log(t1,t2,l1,l2,intervalT,intervalL,dT,dL,l1+dL);
     })
     .catch(err => console.log("Fetch error: " + err))
+  }
+  getCurrentTime() {
+    this.setState({
+      currentDate: moment().format("ddd, MMM D, YYYY"),
+      currentTime: moment().format("h:mm:ssa")
+    });
   }
   render() {
     const endDate = moment().add(this.state.days,"days");
@@ -221,14 +233,15 @@ class App extends Component {
                 </form>
               </div>				
 
-              <div className="current">
-                <p>Current depth is <strong>{parseFloat(this.state.currentDepth).toFixed(2)} {this.state.unitsInFeet ? "ft" : "m"}</strong> <div className={this.state.currentDirection}>({this.state.currentDirection} at {
+              <div className="current"><div>
+                <div className="time">{this.state.currentDate}<br/>{this.state.currentTime}</div>
+                <div className="conditions">Current depth is <strong>{parseFloat(this.state.currentDepth).toFixed(2)} {this.state.unitsInFeet ? "ft" : "m"}</strong> <div className={this.state.currentDirection}>({this.state.currentDirection} at {
                     this.state.unitsInFeet ? 
                       parseFloat(this.state.currentRate * 12).toFixed(1) + " inches"
                     :
                       parseFloat(this.state.currentRate * 100).toFixed(1) + " cm"
-                  }/min)</div></p>
-              </div>
+                  }/min)</div></div>
+                </div></div>
               
               <table className="table">
                 
