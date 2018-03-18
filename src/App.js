@@ -108,7 +108,8 @@ class App extends Component {
   }
   getCurrentConditionsData() {
     // Get Current Water Level Prediction Data
-    const nowUtc = moment.utc().format("YYYY-MM-DD HH:mm:ss");
+    const nowUtc = moment().format("YYYY-MM-DD HH:mm:ss");
+    console.log(nowUtc);
     const startDate = moment(nowUtc).subtract(16,"m");
     const endDate = moment(nowUtc).add(14,"m");
     //console.log(startDate,endDate);
@@ -122,6 +123,9 @@ class App extends Component {
       const l2 = parseFloat(rawData.searchReturn.data.data[1].value.$value);
       const t1 = moment.utc(rawData.searchReturn.data.data[0].boundaryDate.max.$value).valueOf();
       const t2 = moment.utc(rawData.searchReturn.data.data[1].boundaryDate.max.$value).valueOf();
+      //console.log("t1",t1,rawData.searchReturn.data.data[0].boundaryDate.max.$value);
+      //console.log("t2",t2,rawData.searchReturn.data.data[1].boundaryDate.max.$value);
+      //console.log("t",moment().valueOf());
       
       // Linear interpolation
       const intervalL = l2 - l1;  // meters
@@ -130,7 +134,7 @@ class App extends Component {
       const dT = t.valueOf() - t1;  // milliseconds
       const dL = intervalL * dT / intervalT;  // interpolate; meters
       const l = l1 + dL;
-      //console.log(intervalL,dT,intervalT,dL,l1);
+      //console.log("intervalL",intervalL,"dT",dT,"intervalT",intervalT,"dL",dL,"l1",l1);
       
       // Convert depths to feet if necessary
       let waterLevelInCurrentUnits = l;   // always in meters
