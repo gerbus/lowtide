@@ -10,7 +10,7 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      days: 60,
+      days: 30,
       depth: 1.5,
       startHour: 9,
       endHour: 16,
