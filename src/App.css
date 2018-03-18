@@ -1,6 +1,6 @@
 /* General */
 html {
-  background: url("http://gerbus.ca/sites/laststand/img/last_stand_2015_july_selgauss_centered.jpg") no-repeat -60px bottom fixed;
+  background: url("last_stand_2015_july_selgauss_centered.jpg") no-repeat -60px bottom fixed;
   background-position-y: -500px;
 }
 @media (min-width:576px) { 
