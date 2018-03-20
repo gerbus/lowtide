@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import './App.css';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import queryString from 'query-string';
 import waiting from './spiffygif_40x40.gif';
 
@@ -65,13 +65,13 @@ class App extends Component {
       let depthInMeters = this.getInMeters(this.state.depth);
       rawData.searchReturn.data.data.map(item => {
         let itemDateTime = moment.utc(item.boundaryDate.max.$value,"YYYY-MM-DD HH:mm:ss");
-        itemDateTime.local(); // convert to local timezone
+        itemDateTime = itemDateTime.tz("America/Vancouver");  // Convert to Vancouver Time
         const itemTideLevel = item.value.$value;  // Always in meters
         
         // Filter results
         if (itemTideLevel <= depthInMeters && 
-            this.state.startHour <= itemDateTime.hour() && 
-            itemDateTime.hour() < this.state.endHour) {
+            this.state.startHour <= itemDateTime.hours() && 
+            itemDateTime.hours() < this.state.endHour) {
           
           // Highlight weekends and long weekends
           let itemClassName = "";
@@ -158,8 +158,8 @@ class App extends Component {
   }
   getCurrentTime() {
     this.setState({
-      currentDate: moment().format("ddd, MMM D, YYYY"),
-      currentTime: moment().format("h:mm:ssa")
+      currentDate: moment().tz("America/Vancouver").format("ddd, MMM D, YYYY"),
+      currentTime: moment().tz("America/Vancouver").format("h:mm:ssa z")
     });
   }
   render() {
@@ -282,6 +282,10 @@ class App extends Component {
               
             </div>
           </div>
+          <p className="info">
+          Meteorological conditions can cause <strong>differences</strong> (time and height) between the predicted and the observed tides. These differences are mainly the result of atmospheric pressure changes, strong prolonged winds or variations of freshwater discharge.
+          </p>
+          <p className="info">Low tide levels are in reference to a fixed <strong>vertical datum</strong>, which water levels should rarely drop beneath. <a target="_blank" href="http://www.tides.gc.ca/eng/info/verticaldatums">More about vertical datums</a></p>
           <p className="info">
     Data provided by the <a href="http://www.charts.gc.ca/help-aide/about-apropos/index-eng.asp" target="_blank">Canadian Hydrographic Service</a></p>
         </div>

@@ -21,8 +21,18 @@ body {
 
 
 /* Typography */
-h1 { font-size: 24px; }
-
+h1 { font-size: 22px; }
+a { 
+  color: #0ff; 
+  text-shadow: #000 1px 1px 1px;
+}
+.info {
+  font-size: 12px;
+  text-shadow: #fff 1px 1px 1px;
+}
+.current {
+  text-shadow: #fff 1px 1px 1px;
+}
 
 /* Tables */
 table.headroom {
@@ -96,9 +106,7 @@ input[type="number"] {
 .text-back {
   background-color: rgba(255,255,255,0.5);
 }
-.info {
-  font-size: 11px;
-}
+
 .info i {
   font-family: monospace;
 }
