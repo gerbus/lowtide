@@ -269,7 +269,7 @@ class App extends Component {
                         </tr>
                       )) 
                     ) : (
-                      <tr className="text-back"><td colSpan="2"><center>No results. To try different search parameters, see the <a href="#params">bottom of this page</a>.</center></td></tr>
+                      <tr className="text-back"><td colSpan="2"><center>No results...</center></td></tr>
                     )
                   ) : (
                     <tr className="text-back"><td colSpan="2"><center><img src={waiting} alt="Loading data..."/></center></td></tr>
