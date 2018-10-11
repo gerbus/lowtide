@@ -26,6 +26,9 @@ a {
   color: #0ff; 
   text-shadow: #000 1px 1px 1px;
 }
+a:hover {
+  color: #fff;
+}
 .info {
   font-size: 12px;
   text-shadow: #fff 1px 1px 1px;
