@@ -54,44 +54,48 @@ class App extends Component {
       //console.log(rawData.searchReturn.data);
       let data = [];
       let depthInMeters = this.getInMeters(this.state.depth);
-      rawData.searchReturn.data.data.forEach(item => {
+      rawData.searchReturn.data.data.filter(item => {
         let itemDateTime = moment.utc(item.boundaryDate.max.$value,"YYYY-MM-DD HH:mm:ss");
         itemDateTime = itemDateTime.tz("America/Vancouver");  // Convert to Vancouver Time
         const itemTideLevel = item.value.$value;  // Always in meters
         
-        // Filter results
-        if (itemTideLevel <= depthInMeters && 
-            this.state.startHour <= itemDateTime.hours() && 
-            itemDateTime.hours() < this.state.endHour) {
-          
-          // Highlight weekends and long weekends
-          let itemClassName = "";
-          switch (itemDateTime.day()) {
-            case 0:
-            case 6:
-              itemClassName = "weekend";
-              break;
-            case 1:
-            case 5:
-              itemClassName = "longweekend";
-              break;
-            default:
-              break;
-          }
-          
-          // Convert depths to feet if necessary
-          let tideLevelInCurrentUnits = itemTideLevel;  // always in meters
-          if (this.state.unitsInFeet) {
-            tideLevelInCurrentUnits = this.convertMetersToFeet(itemTideLevel).toFixed(2);
-          }
-          
-          // Build data
-          data.push({
-            className: itemClassName,
-            dateTime: itemDateTime.format("ddd, MMM D, YYYY @ h:mma"),
-            tideLevel: tideLevelInCurrentUnits
-          });
+        return (itemTideLevel <= depthInMeters && 
+            itemDateTime.hours() >= this.state.startHour && 
+            itemDateTime.hours() < this.state.endHour);
+      })
+      .forEach(item => {
+        let itemDateTime = moment.utc(item.boundaryDate.max.$value,"YYYY-MM-DD HH:mm:ss");
+        itemDateTime = itemDateTime.tz("America/Vancouver");  // Convert to Vancouver Time
+        const itemTideLevel = item.value.$value;  // Always in meters
+        
+        // Highlight weekends and long weekends
+        let itemClassName = "";
+        switch (itemDateTime.day()) {
+          case 0:
+          case 6:
+            itemClassName = "weekend";
+            break;
+          case 1:
+          case 5:
+            itemClassName = "longweekend";
+            break;
+          default:
+            break;
         }
+
+        // Convert depths to feet if necessary
+        let tideLevelInCurrentUnits = itemTideLevel;  // always in meters
+        if (this.state.unitsInFeet) {
+          tideLevelInCurrentUnits = this.convertMetersToFeet(itemTideLevel).toFixed(2);
+        }
+
+        // Build data
+        data.push({
+          className: itemClassName,
+          day: itemDateTime.day(),
+          dateTime: itemDateTime.format("ddd, MMM D, YYYY @ h:mma"),
+          tideLevel: tideLevelInCurrentUnits
+        });
       });
       
       // Push to state
