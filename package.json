@@ -1,8 +1,9 @@
 {
-  "name": "laststand",
+  "name": "lowtide",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "axios": "^0.18.0",
     "moment": "^2.20.1",
     "moment-timezone": "^0.5.14",
     "query-string": "^5.0.1",

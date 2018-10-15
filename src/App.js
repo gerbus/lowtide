@@ -2,8 +2,10 @@ import React, { Component } from 'react';
 import './App.css';
 import moment from 'moment-timezone';
 import queryString from 'query-string';
-import waiting from './spiffygif_40x40.gif';
 import Form from './components/Form';
+import axios from 'axios';
+import LiveData from './components/LiveData';
+import ForecastData from './components/ForecastData';
 
 const feetPerMeter = 3.28084;
 
@@ -28,7 +30,6 @@ class App extends Component {
       showSubmit: false,
       dataFetched: false,
       unitsInFeet: false,
-      error: false,
     }
     
     // Fetch initial data from Canadian Hydrographic Service
@@ -48,10 +49,10 @@ class App extends Component {
     const endDate = moment().add(this.state.days,"days");
     const endpoint = window.location.protocol + "//api.gerbus.ca/chs/hilo/" + startDate.valueOf() + "-" + endDate.valueOf();  // .valueOf always gets UTC
     
-    fetch(endpoint)
-    .then(resp => resp.json())
-    .then(rawData => {
-      //console.log(rawData.searchReturn.data);
+    axios.get(endpoint)
+    .then(response => {
+      //console.log(response);
+      const rawData = response.data;
       let data = [];
       let depthInMeters = this.getInMeters(this.state.depth);
       rawData.searchReturn.data.data.filter(item => {
@@ -102,8 +103,19 @@ class App extends Component {
       this.setState({data: data, dataFetched: true});
     })
     .catch(err => {
-      console.log("Fetch error: " + err);
-      this.setState({error: true});
+      if (err.response) {      
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.log("Invalid response from data source");
+        console.log(err.response.data);
+        console.log(err.response.status);
+        console.log(err.response.headers);
+      } else if (err.request) {
+        console.log("No response from data source", err.request);
+      } else {
+        console.log(err.message);
+      }
+      console.log(err.config);
     });
   }
   getCurrentConditionsData() {
@@ -115,10 +127,10 @@ class App extends Component {
     //console.log(startDate,endDate);
     const endpoint = window.location.protocol + "//api.gerbus.ca/chs/wl15/" + startDate.valueOf() + "-" + endDate.valueOf();  // .valueOf always gets UTC
     
-    fetch(endpoint)
-    .then(resp => resp.json())
-    .then(rawData => {
+    axios.get(endpoint)
+    .then(response => {
       //console.log(rawData.searchReturn.data);
+      const rawData = response.data;
       const l1 = parseFloat(rawData.searchReturn.data.data[0].value.$value);
       const l2 = parseFloat(rawData.searchReturn.data.data[1].value.$value);
       const t1 = moment.utc(rawData.searchReturn.data.data[0].boundaryDate.max.$value).valueOf();
@@ -155,8 +167,19 @@ class App extends Component {
       //console.log(t1,t2,l1,l2,intervalT,intervalL,dT,dL,l1+dL);
     })
     .catch(err => {
-      console.log("Fetch error: " + err);
-      this.setState({ error: true });
+      if (err.response) {      
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.log("Invalid response from data source");
+        console.log(err.response.data);
+        console.log(err.response.status);
+        console.log(err.response.headers);
+      } else if (err.request) {
+        console.log("No response from data source", err.request);
+      } else {
+        console.log(err.message);
+      }
+      console.log(err.config);
     });
   }
   getCurrentTime() {
@@ -181,31 +204,6 @@ class App extends Component {
       endHour,
     } = this.state;
     
-    // Conditional Renders
-    let headings = null;
-    let data = null;
-    if (this.state.dataFetched && this.state.data.length > 0) {
-      headings = (
-        <thead>
-          <tr className="text-back">
-            <th className="colLeft">When</th>
-            <th className="colRight">Low Tide Level</th>
-          </tr>
-        </thead>
-      );
-      data = this.state.data.map((item, index) => (
-          <tr key={index} className={'text-back ' + item.className}>
-            <td>{item.dateTime}</td>
-            <td>{parseFloat(item.tideLevel).toFixed(1)} {this.state.unitsInFeet ? "ft" : "m"}</td>
-          </tr>
-        ));
-    }
-    if (!this.state.dataFetched) {
-      data = <tr className="text-back"><td colSpan="2"><center><img src={waiting} alt="Loading data..."/></center></td></tr>;
-    } else if (this.state.data.length === 0) {
-      data = <tr className="text-back"><td colSpan="2"><center>No results...</center></td></tr>;
-    }
-    
     return (
       <div className="App">
         <div className="container">
@@ -228,22 +226,20 @@ class App extends Component {
                   />
               </div>
               
-              <div className="current"><div>
-                <div className="time">{this.state.currentDate}<br/>{this.state.currentTime}</div>
-                <div className="conditions">Current depth is <strong>{parseFloat(this.state.currentDepth).toFixed(2)} {this.state.unitsInFeet ? "ft" : "m"}</strong> <div className={this.state.currentDirection}>({this.state.currentDirection} at {
-                    this.state.unitsInFeet ? 
-                      parseFloat(this.state.currentRate * 12).toFixed(1) + " inches"
-                    :
-                      parseFloat(this.state.currentRate * 100).toFixed(1) + " cm"
-                  }/min)</div></div>
-                </div></div>
+              <LiveData 
+                currentDate={this.state.currentDate}
+                currentTime={this.state.currentTime}
+                currentDepth={this.state.currentDepth}
+                unitsInFeet={this.state.unitsInFeet}
+                currentDirection={this.state.currentDirection} 
+                currentRate={this.state.currentRate} 
+                />
               
-              <table className="table">
-                {headings}
-                <tbody>
-                {data}
-                </tbody>
-              </table>
+              <ForecastData 
+                dataFetched={this.state.dataFetched}
+                data={this.state.data}
+                unitsInFeet={this.state.unitsInFeet}
+                />
               
             </div>
           </div>
