@@ -3,8 +3,9 @@ import waiting from '../../spiffygif_40x40.gif';
 
 const ForecastData = (props) => {
   let headings, data = null;
+  const units = props.unitsInFeet ? "ft" : "m";
   
-  if (props.dataFetched && props.data.length > 0) {
+  if (!props.fetchingForecast && props.data.length > 0) {
     headings = (
       <thead>
         <tr className="text-back">
@@ -13,7 +14,7 @@ const ForecastData = (props) => {
         </tr>
       </thead>
     );
-    const units = props.unitsInFeet ? "ft" : "m";
+    
     data = props.data.map((item, index) => {
       const tideLevel = parseFloat(item.tideLevel).toFixed(1);
       return (
@@ -26,8 +27,9 @@ const ForecastData = (props) => {
         </tr>
       );
     });
+    
   }
-  if (!props.dataFetched) {
+  if (props.fetchingForecast) {
     data = (
       <tr className="text-back">
         <td colSpan="2">
