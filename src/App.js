@@ -184,6 +184,7 @@ class App extends Component {
       liveData.currentDepth = waterLevelInCurrentUnits;
       liveData.currentRate = depthChangeRateInCurrentUnits;
       liveData.currentDirection = direction;
+      liveData.error = null;
       this.setState({
         liveData: liveData,
       });
