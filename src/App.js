@@ -12,10 +12,10 @@ const feetPerMeter = 3.28084;
 class App extends Component {
   constructor(props) {
     super(props);
-    
+
     // Check querystring for params
     const qs = queryString.parse(window.location.search);
-    
+
     this.state = {
       inputs: {
         days: qs.days ? qs.days : 30,
@@ -28,9 +28,11 @@ class App extends Component {
         currentDepth: null,
         currentDirection: "", // "rising" or "falling"
         currentRate: null,
-        currentDate: null,
-        currentTime: null,
         error: null,
+      },
+      now: {
+        currentDate: moment().tz("America/Vancouver").format("ddd, MMM D, YYYY"),
+        currentTime: moment().tz("America/Vancouver").format("h:mm:ssa z"),
       },
       forecastData: {
         data: [],
@@ -39,24 +41,24 @@ class App extends Component {
       showSubmit: false,
       fetchingForecast: true,
     }
-    
+
     // Fetch initial data from Canadian Hydrographic Service
     this.getData();
-    
+
     // Refresh current conditions every 5s and current time every 1s
-    setInterval(() => {this.getCurrentConditionsData();}, 5000);
-    setInterval(() => {this.getCurrentTime();}, 1000);  
+    setInterval(() => {this.getLastObservation();}, 5000);
+    setInterval(() => {this.getCurrentTime();}, 1000);
   }
   getData() {
     this.getLowTideData();
-    this.getCurrentConditionsData();
+    this.getLastObservation()
   }
   getLowTideData() {
     // Get Low Tide Prediction Data
     const startDate = moment();
     const endDate = moment().add(this.state.inputs.days,"days");
     const endpoint = window.location.protocol + "//api.gerbus.ca/chs/hilo/" + startDate.valueOf() + "-" + endDate.valueOf();  // .valueOf always gets UTC
-    
+
     axios.get(endpoint)
     .then(response => {
       //console.log(response);
@@ -67,16 +69,16 @@ class App extends Component {
         let itemDateTime = moment.utc(item.boundaryDate.max.$value,"YYYY-MM-DD HH:mm:ss");
         itemDateTime = itemDateTime.tz("America/Vancouver");  // Convert to Vancouver Time
         const itemTideLevel = item.value.$value;  // Always in meters
-        
-        return (itemTideLevel <= depthInMeters && 
-            itemDateTime.hours() >= this.state.inputs.startHour && 
+
+        return (itemTideLevel <= depthInMeters &&
+            itemDateTime.hours() >= this.state.inputs.startHour &&
             itemDateTime.hours() < this.state.inputs.endHour);
       })
       .forEach(item => {
         let itemDateTime = moment.utc(item.boundaryDate.max.$value,"YYYY-MM-DD HH:mm:ss");
         itemDateTime = itemDateTime.tz("America/Vancouver");  // Convert to Vancouver Time
         const itemTideLevel = item.value.$value;  // Always in meters
-        
+
         // Highlight weekends and long weekends
         let itemClassName = "";
         switch (itemDateTime.day()) {
@@ -106,7 +108,7 @@ class App extends Component {
           tideLevel: tideLevelInCurrentUnits
         });
       });
-      
+
       // Push to state
       this.setState({
         forecastData: {
@@ -117,7 +119,7 @@ class App extends Component {
       });
     })
     .catch(err => {
-      if (err.response) {      
+      if (err.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
         console.log("Invalid response from data source");
@@ -130,7 +132,7 @@ class App extends Component {
         console.log(err.message);
       }
       console.log(err.config);
-      
+
       this.setState({
         forecastData: {
           data: [],
@@ -138,6 +140,55 @@ class App extends Component {
         },
       });
     });
+  }
+  async getLastObservation() {
+    const now = moment()
+    const start = now.subtract(10,"minutes").utc().format()
+    const end = now.add(10, "minutes").utc().format()
+    const endpoint = `https://api-iwls.dfo-mpo.gc.ca/api/v1/stations/5cebf1de3d0f4a073c4bb943/data?time-series-code=wlo&from=${encodeURIComponent(start)}&to=${encodeURIComponent(end)}`
+    const liveData = {
+      currentDepth: null,
+      currentRate: null,
+      currentDirection: null,
+      error: null
+    }
+
+    try {
+      const response = await axios.get(endpoint)
+      console.log(response.data)
+      const lastObservation = response.data[response.data.length-1]
+      const baseObservation = response.data[response.data.length-6] // 5 minutes before last ob
+
+      const l1 = parseFloat(baseObservation.value)
+      const l2 = parseFloat(lastObservation.value)
+      const t1 = moment.utc(baseObservation.eventDate)
+      const t2 = moment.utc(lastObservation.eventDate)
+
+      const dL = l2-l1 // meters
+      const dT = t2-t1 // milliseconds
+
+      console.log(lastObservation)
+      console.log(baseObservation)
+      console.log(dL)
+      console.log(dT)
+
+      liveData.currentDepth = lastObservation.value
+      liveData.currentRate = Math.abs(dL) * 60000 / dT // meters per minute
+
+      if (this.state.inputs.unitsInFeet) {
+        liveData.currentDepth = this.convertMetersToFeet(liveData.currentDepth).toFixed(2);
+        liveData.currentRate = this.convertMetersToFeet(liveData.currentRate).toFixed(2);
+      }
+
+      liveData.currentDirection = (dL < 0) ? "falling" : "rising"
+    } catch(e) {
+      console.error(e)
+      liveData.error = e
+    }
+
+    this.setState({
+      liveData: liveData
+    })
   }
   getCurrentConditionsData() {
     // Get Current Water Level Prediction Data
@@ -147,7 +198,7 @@ class App extends Component {
     const endDate = moment(nowUtc).add(14,"m");
     //console.log(startDate,endDate);
     const endpoint = window.location.protocol + "//api.gerbus.ca/chs/wl15/" + startDate.valueOf() + "-" + endDate.valueOf();  // .valueOf always gets UTC
-    
+
     axios.get(endpoint)
     .then(response => {
       //console.log(rawData.searchReturn.data);
@@ -159,7 +210,7 @@ class App extends Component {
       //console.log("t1",t1,rawData.searchReturn.data.data[0].boundaryDate.max.$value);
       //console.log("t2",t2,rawData.searchReturn.data.data[1].boundaryDate.max.$value);
       //console.log("t",moment().valueOf());
-      
+
       // Linear interpolation
       const intervalL = l2 - l1;  // meters
       const intervalT = t2 - t1;  // milliseconds
@@ -168,7 +219,7 @@ class App extends Component {
       const dL = intervalL * dT / intervalT;  // interpolate; meters
       const l = l1 + dL;
       //console.log("intervalL",intervalL,"dT",dT,"intervalT",intervalT,"dL",dL,"l1",l1);
-      
+
       // Convert depths to feet if necessary
       let waterLevelInCurrentUnits = l;   // always in meters
       let depthChangeRateInCurrentUnits = Math.abs(dL) * 60000 / dT;   // meters per minute
@@ -176,10 +227,10 @@ class App extends Component {
         waterLevelInCurrentUnits = this.convertMetersToFeet(waterLevelInCurrentUnits).toFixed(2);
         depthChangeRateInCurrentUnits = this.convertMetersToFeet(depthChangeRateInCurrentUnits).toFixed(2);
       }
-      
+
       // Direction
       const direction = (dL < 0) ? "falling" : "rising";
-      
+
       let liveData = Object.assign({},this.state.liveData);
       liveData.currentDepth = waterLevelInCurrentUnits;
       liveData.currentRate = depthChangeRateInCurrentUnits;
@@ -191,7 +242,7 @@ class App extends Component {
       //console.log(t1,t2,l1,l2,intervalT,intervalL,dT,dL,l1+dL);
     })
     .catch(err => {
-      if (err.response) {      
+      if (err.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
         console.log("Invalid response from data source");
@@ -204,7 +255,7 @@ class App extends Component {
         console.log(err.message);
       }
       console.log(err.config);
-      
+
       let liveData = Object.assign({},this.state.liveData);
       liveData.error = err;
       this.setState({
@@ -213,11 +264,11 @@ class App extends Component {
     });
   }
   getCurrentTime() {
-    let liveData = Object.assign({},this.state.liveData);
-    liveData.currentDate = moment().tz("America/Vancouver").format("ddd, MMM D, YYYY");
-    liveData.currentTime = moment().tz("America/Vancouver").format("h:mm:ssa z");
     this.setState({
-      liveData: liveData,
+      now: {
+        currentDate: moment().tz("America/Vancouver").format("ddd, MMM D, YYYY"),
+        currentTime: moment().tz("America/Vancouver").format("h:mm:ssa z")
+      }
     });
   }
   render() {
@@ -227,13 +278,13 @@ class App extends Component {
       handleSubmit,
       handleChangeUnits,
     } = this;
-    
+
     return (
       <div className="App">
         <div className="container">
           <div className="row">
             <div className="col-sm-10 col-md-9">
-              
+
               <div className="text-back intro">
                 <h1>Low Tide Finder (Vancouver)</h1>
                 <Form
@@ -249,24 +300,24 @@ class App extends Component {
                   endHour={this.state.inputs.endHour}
                   />
               </div>
-              
-              <LiveData 
-                currentDate={this.state.liveData.currentDate}
-                currentTime={this.state.liveData.currentTime}
+
+              <LiveData
+                currentDate={this.state.now.currentDate}
+                currentTime={this.state.now.currentTime}
                 currentDepth={this.state.liveData.currentDepth}
                 unitsInFeet={this.state.inputs.unitsInFeet}
-                currentDirection={this.state.liveData.currentDirection} 
+                currentDirection={this.state.liveData.currentDirection}
                 currentRate={this.state.liveData.currentRate}
                 error={this.state.liveData.error}
                 />
-              
-              <ForecastData 
+
+              <ForecastData
                 fetchingForecast={this.state.fetchingForecast}
                 data={this.state.forecastData.data}
                 unitsInFeet={this.state.inputs.unitsInFeet}
                 error={this.state.forecastData.error}
                 />
-              
+
             </div>
           </div>
           <p className="info">
@@ -286,7 +337,7 @@ class App extends Component {
     if (e.target.type === "number" && e.target.max) {
       if (parseFloat(e.target.value) > parseFloat(e.target.max)) {
         return;
-      } 
+      }
     }
     let inputs = Object.assign({}, this.state.inputs);
     inputs[e.target.id] = e.target.value;
@@ -298,7 +349,7 @@ class App extends Component {
   handleSubmit = (e) => {
     e.preventDefault();
     this.setState({
-      fetchingForecast: true, 
+      fetchingForecast: true,
       showSubmit: false,
     });
 
@@ -306,16 +357,16 @@ class App extends Component {
     let depthInMeters = this.getInMeters(this.state.inputs.depth); // Convert to Meters if necessary
     window.history.pushState(
       this.state,
-      "Low Tide Finder | Vancouver (" + 
-       this.state.inputs.days + "d/" + 
-       depthInMeters + "m/" + 
-       this.state.inputs.startHour + ":00/" + 
+      "Low Tide Finder | Vancouver (" +
+       this.state.inputs.days + "d/" +
+       depthInMeters + "m/" +
+       this.state.inputs.startHour + ":00/" +
        this.state.inputs.endHour + ":00)",
-      "/?days=" + this.state.inputs.days + 
-      "&depth=" + depthInMeters + 
-      "&startHour=" + this.state.inputs.startHour + 
+      "/?days=" + this.state.inputs.days +
+      "&depth=" + depthInMeters +
+      "&startHour=" + this.state.inputs.startHour +
       "&endHour=" + this.state.inputs.endHour);
-    
+
     // Fetch new data
     this.getData();
   }
@@ -329,12 +380,12 @@ class App extends Component {
       // Meters to Feet
       s = feetPerMeter;
     }
-    
+
     // Mutate input
     let depth = this.state.inputs.depth;
     let convertedDepth = depth * s;
     convertedDepth = convertedDepth.toFixed(1);
-    
+
     // Mutate data
     let data = this.state.forecastData.data.slice();
     let convertedData = [];
@@ -344,7 +395,7 @@ class App extends Component {
     });
     const convertedCurrentDepth = this.state.liveData.currentDepth * s;
     const convertedCurrentRate = this.state.liveData.currentRate * s;
-    
+
     // Update state
     let inputs = Object.assign({},this.state.inputs);
     inputs.unitsInFeet = !this.state.inputs.unitsInFeet;
@@ -363,11 +414,11 @@ class App extends Component {
   getInMeters(measure) {
     let s = 1;  // assume measure already in meters
     if (this.state.inputs.unitsInFeet) s = 1 / feetPerMeter;
-    let measureInMeters = s * measure;    
+    let measureInMeters = s * measure;
     return measureInMeters.toFixed(3);
   }
   convertMetersToFeet(measureInMeters) {
-    let measureInFeet = feetPerMeter * measureInMeters;    
+    let measureInFeet = feetPerMeter * measureInMeters;
     return measureInFeet;
   }
 }
