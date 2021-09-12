@@ -50,8 +50,92 @@ class App extends Component {
     setInterval(() => {this.getCurrentTime();}, 1000);
   }
   getData() {
-    this.getLowTideData();
+    this.getForecast();
     this.getLastObservation()
+  }
+  async getForecast() {
+    const endpointBase = "https://api-iwls.dfo-mpo.gc.ca/api/v1/stations/5cebf1de3d0f4a073c4bb943/data?time-series-code=wlp-hilo"
+
+    const startDate = moment().subtract(10,"minutes")
+    const endDate = moment().add(this.state.inputs.days,"days")
+    const interval = endDate.diff(startDate,"hours")
+    let responseData = []
+
+    // Since the endpoint can only give a week's worth (actually 168 hours) of data
+    //  per request, need to break up into multiple requests if neccesary.
+    for (let w = 0; w < interval/24/7; w++) {
+      const from = moment(startDate).add(w*7*24,"hours").utc().format()
+      const fromPlusWeek = moment(from).add(7*24,"hours").utc().format()
+      const to = fromPlusWeek > endDate ? endDate : fromPlusWeek
+      const endpoint = endpointBase + `&from=${from}&to=${to}`
+
+      try {
+        const response = await axios.get(endpoint)
+        //console.debug(response.data)
+        responseData = responseData.concat(response.data)
+      } catch(e) {
+        console.error(e)
+        this.setState({
+          forecastData: {
+            data: [],
+            error: e,
+          },
+          fetchingForecast: false
+        });
+        return
+      }
+    }
+
+    // Add "high" or "low" to data
+    if (parseFloat(responseData[0].value) > parseFloat(responseData[1].value)) {
+      responseData[0].type = "high"
+    } else {
+      responseData[0].type = "low"
+    }
+    responseData.forEach((item, index, arr) => {
+      if (item.type === undefined) {
+        if (arr[index].value > arr[index-1].value) {
+          arr[index].type = "high"
+        } else {
+          arr[index].type = "low"
+        }
+      }
+    })
+
+    console.debug(responseData)
+
+    // Process data
+    const processedData = responseData.filter(item => {
+      const itemDateTime = moment.utc(item.eventDate).tz("America/Vancouver")
+      return (
+        itemDateTime.hours() >= this.state.inputs.startHour &&
+        itemDateTime.hours() <= this.state.inputs.endHour
+      )
+    }).map(item => {
+      const itemDateTime = moment.utc(item.eventDate).tz("America/Vancouver") // Convert to Vancouver times
+      let itemTideLevel = item.value
+      if (this.state.inputs.unitsInFeet) { // Convert to feet if neccesary
+        itemTideLevel = this.convertMetersToFeet(itemTideLevel).toFixed(2);
+      }
+
+      return {
+        className: "",
+        day: itemDateTime.day(),
+        dateTime: itemDateTime.format("ddd, MMM D @ h:mma"),
+        tideLevel: itemTideLevel,
+        tideType: item.type
+      }
+    })
+    .filter(item => item.tideLevel <= this.state.inputs.depth)
+
+
+    this.setState({
+      forecastData: {
+        data: processedData,
+        error: null,
+      },
+      fetchingForecast: false
+    });
   }
   getLowTideData() {
     // Get Low Tide Prediction Data
@@ -138,13 +222,13 @@ class App extends Component {
           data: [],
           error: err,
         },
+        fetchingForecast: false
       });
     });
   }
   async getLastObservation() {
-    const now = moment()
-    const start = now.subtract(10,"minutes").utc().format()
-    const end = now.add(10, "minutes").utc().format()
+    const start = moment().subtract(10,"minutes").utc().format()
+    const end = moment().add(10, "minutes").utc().format()
     const endpoint = `https://api-iwls.dfo-mpo.gc.ca/api/v1/stations/5cebf1de3d0f4a073c4bb943/data?time-series-code=wlo&from=${encodeURIComponent(start)}&to=${encodeURIComponent(end)}`
     const liveData = {
       currentDepth: null,
@@ -155,7 +239,7 @@ class App extends Component {
 
     try {
       const response = await axios.get(endpoint)
-      console.log(response.data)
+      //console.debug(response.data)
       const lastObservation = response.data[response.data.length-1]
       const baseObservation = response.data[response.data.length-6] // 5 minutes before last ob
 
@@ -167,10 +251,10 @@ class App extends Component {
       const dL = l2-l1 // meters
       const dT = t2-t1 // milliseconds
 
-      console.log(lastObservation)
-      console.log(baseObservation)
-      console.log(dL)
-      console.log(dT)
+      // console.debug(lastObservation)
+      // console.debug(baseObservation)
+      // console.debug(dL)
+      // console.debug(dT)
 
       liveData.currentDepth = lastObservation.value
       liveData.currentRate = Math.abs(dL) * 60000 / dT // meters per minute
