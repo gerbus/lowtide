@@ -27,7 +27,8 @@ const ForecastData = (props) => {
         data = (
           <tr className="text-back">
             <td colSpan="2">
-              <center>No results...</center>
+              <center>No results.</center>
+              <center>(You may want to check your search criteria)</center>
             </td>
           </tr>
         );
